@@ -26,7 +26,16 @@ def index():
 
 @app.route('/restaurants')
 def get_restaurants():
-    restaurants_list = [restaurant.to_dict() for restaurant in Restaurant.query.all()]
+    restaurants = Restaurant.query.all()
+    restaurants_list = [
+        {
+            'id' : restaurant.id,
+            'address' : restaurant.address,
+            'name' : restaurant.name
+        }
+
+        for restaurant in restaurants
+    ]
     return make_response(restaurants_list, 200)
 
 
@@ -46,7 +55,7 @@ def get_by_id(id):
         if restaurant:
             db.session.delete(restaurant)
             db.session.commit()
-            return {}, 200
+            return {}, 204
         return make_response({
         " error": "Restaurant not found"
          }, 404)
@@ -55,29 +64,42 @@ def get_by_id(id):
 
 @app.route('/pizzas')
 def get_pizzas():
-    pizza_list = [pizza.to_dict() for pizza in Pizza.query.all()]
-    return make_response(pizza_list, 200)
+    pizzas = Pizza.query.all()
+    pizzas_list = [
+        {
+            'id' : pizza.id,
+            'ingredients' : pizza.ingredients,
+            'name' : pizza.name
+        }
+
+        for pizza in pizzas
+    ]
+    return make_response(pizzas_list, 200)
 
 
-
-@app.route('/restaurant_pizzas', methods=['GET', 'POST'])
+@app.route('/restaurant_pizzas', methods=['POST'])
 def get_rp():
-
-    if request.method == 'GET':
-        restaurant_pizza_list = [restaurant_pizza.to_dict() for restaurant_pizza in RestaurantPizza.query.all()]
-        return make_response(restaurant_pizza_list, 200)
     
-    elif request.method == 'POST':
-        new_rp = RestaurantPizza(
-            price = request.json.get('price')
-        )
+    data = request.get_json()
+    try:
+        new_rp = RestaurantPizza(price=data["price"], pizza_id=data["pizza_id"], restaurant_id=data["restaurant_id"])
         db.session.add(new_rp)
         db.session.commit()
+    except ValueError:
+        error_message = {
+            "errors": ["validation errors"]
+        }
+        return make_response(
+            error_message,
+            400
+        )
+    response = make_response(
+            new_rp.to_dict(),
+             201
+            )
+    return response
+ 
 
-        if new_rp:
-            return make_response(new_rp.to_dict(), 200)
-        return make_response({
-        "errors": ["validation errors"]
-        }, 404)
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
+
